@@ -2,14 +2,12 @@ import streamlit as st
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_models import ChatOllama
 
-
-from langchain_core.prompts import {
+from langchain_core.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
-    ChatPromptTemplate,
-    AIMessagePromptTemplate
-}
-
+    AIMessagePromptTemplate,
+    ChatPromptTemplate
+)
 # Custom CSS styling
 st.markdown("""
 <style>
@@ -77,5 +75,39 @@ llm_engine=ChatOllama(
     base_url="http://localhost:11434",
 
     temperature=0.3
-
 )
+
+# System prompt configuration
+system_prompt = SystemMessagePromptTemplate.from_template(
+    "You are an expert coding assistant. Provide concise, correct solutions"
+    "with strong print statements for degugging. Always respond in English"
+)
+
+# Session state management
+if "message_log" not in st.session_state:
+    st.session_state.message_log = [{"role": "ai", "content": "Hi! I'm DeepSeek. How can I help you code today? 💻"}]
+    
+# Chat container
+chat_container = st.container()
+
+# Display chat messages
+with chat_container:
+    for message in st.session_state.message_log:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# Chat input and processing
+user_query = st.chat_input("Type your coding question here...")
+
+def generate_ai_response(prompt_chain):
+    processing_pipeline = prompt_chain | llm_engine | StrOutputParser()
+    return processing_pipeline.invoke({}) # Invoke calls all the chains
+
+def build_prompt_chain():
+    prompt_sentence = [system_prompt]
+    for msg in st.session_state.message_log:
+        if msg["role"] == "user":
+            prompt_sentence.append(HumanMessagePromptTemplate.from_template_file(msg["content"]))
+        elif msg["role"] == "ai":
+            prompt_sentence.append(AIMessagePromptTemplate.from_template(msg["content"]))
+    return ChatPromptTemplate.from_messages(prompt_sentence)
